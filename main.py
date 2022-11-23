@@ -1,13 +1,31 @@
 import cv2
+import numpy as np
+from cvzone.SelfiSegmentationModule import SelfiSegmentation
+import mediapipe as mp
 
 face = cv2.CascadeClassifier("haarcascade_frontalface_default.xml")
 eyes = cv2.CascadeClassifier("haarcascade_eye.xml")
 mouth = cv2.CascadeClassifier("Mouth.xml")
 
-# scale - określa +- jaki rozmiar obiektu ma byc wykrywany
-# minNeighbors - ile musi zostać wykrytych obiektów na obszarze żeby uznać to za np twarz im wiecej tym wieksza dokładnosc
-# teoria działania:
-# https://www.bogotobogo.com/python/OpenCV_Python/python_opencv3_Image_Object_Detection_Face_Detection_Haar_Cascade_Classifiers.php
+blur = 21
+canny_low = 15
+canny_high = 150
+min_area_g = 0.0005
+max_area_g = 0.95
+dilate_iter = 10
+erode_iter = 10
+mask_color = (0.0, 0.0, 0.0)
+
+segmentor = SelfiSegmentation()
+
+video_capture = cv2.VideoCapture(0)
+
+# Covers both range
+lower = np.array([0, 30, 53], dtype = "uint8")
+upper = np.array([20, 180, 255], dtype = "uint8")
+
+lower2 = np.array([172, 30, 53], dtype = "uint8")
+upper2 = np.array([180, 180, 210], dtype = "uint8")
 
 def draw_boundary(img, classifier, scaleFactor, minNeighbors, color, text):
     gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -30,16 +48,44 @@ def detect(img, color):
 
     return img
 
-# Capturing real time video stream. 0 for built-in web-cams, 0 or -1 for external web-cams
-video_capture = cv2.VideoCapture(0)
+
 
 while True:
-    # Reading image from video stream
-    _, img = video_capture.read()
-    # Writing processed image in a new window
-    img = detect(img, (255, 0, 0))
+    ret, img = video_capture.read(0)
+    image = img.copy()
+    if ret:
+        image = segmentor.removeBG(image, (0, 0, 0))
+    converted = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
-    cv2.imshow("Biometria II", img)
+    skinMask = cv2.inRange(converted, lower, upper)
+    skinMask2 = cv2.inRange(converted, lower2, upper2)
+
+    #Gaussian Blur
+    skinMask = cv2.GaussianBlur(skinMask, (3, 3), 0)
+    skinMask2 = cv2.GaussianBlur(skinMask2, (3, 3), 0)
+
+    skin1 = cv2.bitwise_and(image, image, mask = skinMask)
+    skin2 = cv2.bitwise_and(image, image, mask = skinMask2)
+    skin = cv2.bitwise_or(skin1,skin2) #adding both ranges
+
+    img_gray = cv2.cvtColor(skin, cv2.COLOR_BGR2GRAY)
+    # apply binary thresholding
+    ret, thresh = cv2.threshold(img_gray, 50, 255, cv2.THRESH_BINARY)
+
+    # detect the contours on the binary image using cv2.CHAIN_APPROX_NONE
+    contours, hierarchy = cv2.findContours(image=thresh, mode=cv2.RETR_TREE, method=cv2.CHAIN_APPROX_NONE)
+
+    # draw contours on the original image
+    image_copy = skin.copy()
+    cv2.drawContours(image=image_copy, contours=contours, contourIdx=-1, color=(0, 255, 0), thickness=2,
+                     lineType=cv2.LINE_AA)
+
+    # Writing processed image in a new window
+    img2 = img.copy()
+    img2 = detect(img2, (255, 0, 0))
+
+    cv2.imshow("Biometria II", np.hstack([img, image_copy]))
+    cv2.imshow("Biometria IIx", np.hstack([img, img2]))
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
