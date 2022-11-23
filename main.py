@@ -123,8 +123,8 @@ while True:
                     landmarks_prev_time[id] = cTime
                     landmarks_prev_position[id] = (x, y)
 
-    cv2.imshow("Biometria II", np.hstack([img, image_copy]))
-    cv2.imshow("Biometria", np.hstack([image3, img2]))
+    cv2.imshow("Biometria II", np.hstack([np.vstack([img, image_copy]), np.vstack([image3, img2])]))
+    cv2.imshow("Biometria", np.vstack([image3, img2]))
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
