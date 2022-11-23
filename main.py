@@ -2,10 +2,15 @@ import cv2
 import numpy as np
 from cvzone.SelfiSegmentationModule import SelfiSegmentation
 import mediapipe as mp
+import time as time
+import math
 
 face = cv2.CascadeClassifier("haarcascade_frontalface_default.xml")
 eyes = cv2.CascadeClassifier("haarcascade_eye.xml")
 mouth = cv2.CascadeClassifier("Mouth.xml")
+mp_drawing = mp.solutions.drawing_utils
+mp_drawing_styles = mp.solutions.drawing_styles
+mp_face_mesh = mp.solutions.face_mesh
 
 blur = 21
 canny_low = 15
@@ -26,6 +31,8 @@ upper = np.array([20, 180, 255], dtype = "uint8")
 
 lower2 = np.array([172, 30, 53], dtype = "uint8")
 upper2 = np.array([180, 180, 210], dtype = "uint8")
+
+landmarks_ids = [1, 15, 50, 280]
 
 def draw_boundary(img, classifier, scaleFactor, minNeighbors, color, text):
     gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -49,6 +56,12 @@ def detect(img, color):
     return img
 
 
+mpDraw = mp.solutions.drawing_utils
+mpFaceMesh = mp.solutions.face_mesh
+face_mesh = mpFaceMesh.FaceMesh()
+
+landmarks_prev_position = {landmarks_ids[0] : None, landmarks_ids[1]: None, landmarks_ids[2]: None, landmarks_ids[3]: None }
+landmarks_prev_time = {landmarks_ids[0] : None, landmarks_ids[1]: None, landmarks_ids[2]: None, landmarks_ids[3]: None }
 
 while True:
     ret, img = video_capture.read(0)
@@ -84,8 +97,34 @@ while True:
     img2 = img.copy()
     img2 = detect(img2, (255, 0, 0))
 
+    image3 = img.copy()
+    image3 = cv2.cvtColor(image3, cv2.COLOR_BGR2RGB)
+    results = face_mesh.process(image3)
+
+    cTime = time.time()
+    if results.multi_face_landmarks:
+        for face_landmarks in results.multi_face_landmarks:
+            mp_drawing.draw_landmarks(
+                image=image3,
+                landmark_list=face_landmarks,
+                connections=mp_face_mesh.FACEMESH_FACE_OVAL,
+                landmark_drawing_spec=None,
+                connection_drawing_spec=mp_drawing_styles.get_default_face_mesh_contours_style()
+            )
+            for id,landmark in enumerate(face_landmarks.landmark):
+                ih, iw, ic = image3.shape
+                x, y = int(landmark.x*iw), int(landmark.y*ih)
+                if id in landmarks_ids:
+                    cv2.putText(image3, str(id), (x, y), cv2.FONT_HERSHEY_PLAIN, 1, (0, 255, 0), 1)
+                    if landmarks_prev_time[id]:
+                        time_difference = cTime - landmarks_prev_time[id]
+                        smth = math.sqrt((x - landmarks_prev_position[id][0])**2 + (y - landmarks_prev_position[id][1])**2)/ time_difference
+                        cv2.putText(image3, str(id) +  " " + str(smth), (20, 70*(landmarks_ids.index(id) + 1)), cv2.FONT_HERSHEY_PLAIN, 1, (0, 255, 0), 1)
+                    landmarks_prev_time[id] = cTime
+                    landmarks_prev_position[id] = (x, y)
+
     cv2.imshow("Biometria II", np.hstack([img, image_copy]))
-    cv2.imshow("Biometria IIx", np.hstack([img, img2]))
+    cv2.imshow("Biometria", np.hstack([image3, img2]))
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
