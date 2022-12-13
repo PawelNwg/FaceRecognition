@@ -6,18 +6,18 @@ import time as time
 import math
 
 #wytrenowane modele
+#modele OpenCV
 face = cv2.CascadeClassifier("haarcascade_frontalface_default.xml")
 eyes = cv2.CascadeClassifier("haarcascade_eye.xml")
 mouth = cv2.CascadeClassifier("Mouth.xml")
-
+#modele mediapipe
 mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
 mp_face_mesh = mp.solutions.face_mesh
 face_mesh = mp_face_mesh.FaceMesh()
 
-
 segmentor = SelfiSegmentation()
-
+# pobieranie obrazu z kamery, 0 oznacza kamere wbudowana
 video_capture = cv2.VideoCapture(0)
 
 # zakres kolorow skory w hsv
@@ -30,6 +30,10 @@ upper2 = np.array([180, 180, 210], dtype = "uint8")
 #wybrene id landmarkow do pomiaru predkosci
 landmarks_ids = [1, 15, 50, 280]
 
+# metoda rysuje kształt prostokąta, wykrywając obiekt detektorem
+# classifier - zadany klasyfikator
+# scale factor - skalowanie obrazu wejściowego
+# minNeighbors - ile puntków należy zidentyfikować w obszarze aby zaliczyć obiekt jako wykryty
 def draw_boundary(img, classifier, scaleFactor, minNeighbors, color, text):
     gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     features = classifier.detectMultiScale(gray_img, scaleFactor, minNeighbors)
@@ -41,8 +45,9 @@ def draw_boundary(img, classifier, scaleFactor, minNeighbors, color, text):
 
     return cords
 
+# metoda dokonuje detekcji twarzy, wycina ten obszar z obrazu a następnie
+# na wycinku uruchamia detektory oczu oraz ust
 def detect(img, color):
-
     cords = draw_boundary(img, face, 1.1, 10, color, "Face")
     if(len(cords) == 4):
         cropped_img = img[cords[1]:cords[1] + cords[3], cords[0]:cords[0] + cords[2]]
