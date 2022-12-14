@@ -90,12 +90,15 @@ def load_face_dataset(inputPath, minSamples=3):
 
 def get_face(img):
     boxes = detect_faces(img)
+    if (len(boxes) == 1 and not boxes[0]) or not boxes:
+        return (img, False)
+
     for (startX, startY, endX, endY) in boxes:
         faceROI = img[startY:endY, startX:endX]
         faceROI = cv2.resize(faceROI, (47, 62))
         faceROI = cv2.cvtColor(faceROI, cv2.COLOR_BGR2GRAY)
 
-    return faceROI
+    return (faceROI, True)
 
 input = 'faces/'
 confidence = 0.5
@@ -144,8 +147,10 @@ while True:
     ret, img = video_capture.read(0)
     if not ret:
         continue
-    face = get_face(img)
-    face_array = np.asarray([face.flatten()])
+    (face_img, success) = get_face(img)
+    if not success:
+        continue
+    face_array = np.asarray([face_img.flatten()])
     prediction = model.predict(pca.transform(face_array))
     # grab the predicted name and actual name
     predName = le.inverse_transform([prediction[0]])[0]
