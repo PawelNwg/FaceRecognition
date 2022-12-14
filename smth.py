@@ -136,11 +136,11 @@ print("[INFO] computing eigenfaces took {:.4f} seconds".format(
 
 print("[INFO] training classifier...")
 model = SVC(kernel="rbf", C=10.0, gamma=0.001, random_state=42)
-model.fit(trainX, trainY)
+model.fit(pca.fit_transform(pcaFaces), labels)
 # evaluate the model
-print("[INFO] evaluating model...")
-predictions = model.predict(pca.transform(testX))
-print(classification_report(testY, predictions, target_names=le.classes_))
+# print("[INFO] evaluating model...")
+# predictions = model.predict(pca.transform(testX))
+# print(classification_report(testY, predictions, target_names=le.classes_))
 
 # check to see if the PCA components should be visualized
 while True:
@@ -155,7 +155,7 @@ while True:
     # grab the predicted name and actual name
     predName = le.inverse_transform([prediction[0]])[0]
     # draw the predicted name and actual name on the image
-    cv2.putText(img, "pred: {}".format(predName), (5, 25),
+    cv2.putText(img, "predykcja: {}".format(predName), (5, 25),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
     # display the predicted name  and actual name
     print("[INFO] prediction: {}".format(predName))
