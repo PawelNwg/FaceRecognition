@@ -1,7 +1,6 @@
 from sklearn.preprocessing import LabelEncoder
 from sklearn.decomposition import PCA
 from sklearn.svm import SVC
-from sklearn.model_selection import train_test_split
 from imutils import paths
 import numpy as np
 import imutils
@@ -10,10 +9,7 @@ import cv2
 
 input = 'faces/'
 video_capture = cv2.VideoCapture(0)
-
-# Wytrenowany model twarzy
 face = cv2.CascadeClassifier("haarcascade_frontalface_default.xml")
-
 
 def get_coordinates(image, scaleFactor, minNeighbors):
     gray_img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -24,11 +20,9 @@ def get_coordinates(image, scaleFactor, minNeighbors):
 
     return cords
 
-
 def detect_faces(image):
     coordinates = get_coordinates(image, 1.1, 10)
     return [coordinates]
-
 
 def load_face_dataset(inputPath, minSamples=3):
     imagePaths = list(imutils.paths.list_images(inputPath))
@@ -76,8 +70,6 @@ def get_face(img):
 
     return (faceROI, True)
 
-
-# Load the CALTECH faces dataset
 print("[INFO] Loading dataset...")
 (faces, labels) = load_face_dataset(input, minSamples=2)
 print("[INFO] {} images in dataset".format(len(faces)))
@@ -89,22 +81,19 @@ le = LabelEncoder()
 labels = le.fit_transform(labels)
 
 # Construct our training split
-(_, _, trainX, _, _, _) = train_test_split(faces, pcaFaces, labels, test_size=0.5, stratify=labels, random_state=42)
-
 # Compute the PCA (eigenfaces) representation of the data, then
 # project the training data onto the eigenfaces subspace
 print("[INFO] Creating eigenfaces...")
 pca = PCA(svd_solver="randomized", n_components=2, whiten=True)
 
 start = time.time()
-pca.fit_transform(trainX)
-end = time.time()
-print("[INFO] Computing eigenfaces took {:.4f} seconds".format(end - start))
-
 print("[INFO] Training classifier...")
 model = SVC(kernel="rbf", C=10.0, gamma=0.001, random_state=42)
 model.fit(pca.fit_transform(pcaFaces), labels)
+end = time.time()
+print("[INFO] Computing eigenfaces took {:.4f} seconds".format(end - start))
 
+# reading face from live camera image and check who camera can see
 while True:
     ret, img = video_capture.read(0)
     if not ret:
